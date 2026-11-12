@@ -1,0 +1,16 @@
+# Core dependencies
+requests>=2.31.0
+dnspython>=2.4.0
+python-nmap>=0.7.1
+
+# Async support
+aiohttp>=3.9.0
+asyncio-throttle>=1.0.0
+
+# Utilities
+click>=8.1.0
+rich>=13.0.0
+pyyaml>=6.0.0
+
+# Data processing
+pandas>=2.1.0

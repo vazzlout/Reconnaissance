@@ -1,0 +1,73 @@
+# Recon Tool Configuration
+
+subdomain_enum:
+  # Available sources: crtsh, dnsdumpster, securitytrails, shodan, censys, 
+  # hackertarget, rapiddns, alienvault, virustotal, wayback, bufferover, 
+  # threatcrowd, anubis, riddler, bruteforce
+  sources:
+    - crtsh
+    - dnsdumpster
+    - hackertarget
+    - rapiddns
+    - alienvault
+    - wayback
+    - bufferover
+    - threatcrowd
+    - anubis
+    - riddler
+    - bruteforce
+  # API keys for sources that require them (set via environment variables or here)
+  api_keys:
+    securitytrails: ""  # SecurityTrails API key
+    shodan: ""          # Shodan API key
+    censys_id: ""       # Censys API ID
+    censys_secret: ""   # Censys API Secret
+    virustotal: ""      # VirusTotal API key
+  wordlist: "wordlists/subdomains.txt"
+  threads: 50
+  timeout: 10
+  recursive: false      # Enable recursive subdomain enumeration
+  max_depth: 2          # Max depth for recursive enumeration
+
+# Stealth/Evasion Configuration
+stealth:
+  enabled: true                    # Enable stealth mode
+  initial_delay_min: 5.0           # Min initial delay before starting (seconds)
+  initial_delay_max: 30.0          # Max initial delay before starting (seconds)
+  request_delay_min: 1.0           # Min delay between requests (seconds)
+  request_delay_max: 5.0           # Max delay between requests (seconds)
+  jitter_factor: 0.3               # Jitter factor (0.0-1.0) for randomization
+  rate_limit: 10.0                 # Requests per second (token bucket)
+  burst_allowance: 5               # Burst allowance for token bucket
+  randomize_order: true            # Randomize request order
+  rotate_user_agent: true          # Rotate user agents per request
+
+port_scan:
+  ports: "1-1000,3306,5432,8080,8443"
+  scan_type: "syn"  # syn, connect, udp
+  timeout: 5
+  use_nmap: true
+
+dns_enum:
+  record_types:
+    - A
+    - AAAA
+    - MX
+    - TXT
+    - NS
+    - CNAME
+    - SOA
+  resolvers:
+    - 8.8.8.8
+    - 1.1.1.1
+    - 9.9.9.9
+  try_zone_transfer: true
+
+output:
+  format: "json"  # json, csv, txt, table, tree
+  file: null
+
+general:
+  user_agent: "ReconTool/1.0"
+  rate_limit: 100  # requests per second (legacy, use stealth.rate_limit)
+  proxy: null
