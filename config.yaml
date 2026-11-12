@@ -42,6 +42,73 @@ stealth:
   randomize_order: true            # Randomize request order
   rotate_user_agent: true          # Rotate user agents per request
 
+# HTTP Reconnaissance Configuration
+http_recon:
+  timeout: 10                      # Request timeout (seconds)
+  follow_redirects: true           # Follow HTTP redirects
+  test_methods: true               # Test HTTP methods (OPTIONS, TRACE, etc.)
+  max_redirects: 10                # Maximum redirects to follow
+
+# SSL/TLS Analyzer Configuration
+ssl_analyzer:
+  port: 443                        # Port to scan (default 443)
+  timeout: 10                      # Connection timeout (seconds)
+  check_ct_logs: true              # Query Certificate Transparency logs
+  check_vulnerabilities: true      # Check for known SSL/TLS vulnerabilities
+  deep_scan: false                 # Deep scan (more thorough but slower)
+
+# Directory/File Enumeration Configuration
+dir_enum:
+  timeout: 10                      # Request timeout (seconds)
+  threads: 20                      # Concurrent threads
+  recursive: false                 # Enable recursive directory scanning
+  max_depth: 3                     # Maximum recursion depth
+  extensions:                      # File extensions to test
+    - ''
+    - '.php'
+    - '.html'
+    - '.js'
+    - '.json'
+    - '.xml'
+    - '.txt'
+    - '.bak'
+    - '.backup'
+    - '.old'
+    - '.orig'
+    - '.swp'
+    - '.tmp'
+    - '.temp'
+    - '.log'
+    - '.sql'
+    - '.zip'
+    - '.tar.gz'
+    - '.tgz'
+    - '.rar'
+    - '.7z'
+    - '.gz'
+    - '.bz2'
+    - '.xz'
+  detect_tech: true                # Auto-detect technology for smart wordlists
+  follow_redirects: true           # Follow HTTP redirects
+  status_codes:                    # Status codes to consider as "found"
+    - 200
+    - 204
+    - 301
+    - 302
+    - 307
+    - 308
+    - 401
+    - 403
+    - 405
+    - 500
+  exclude_status:                  # Status codes to exclude
+    - 404
+
+# Technology Fingerprinting Configuration
+tech_fingerprint:
+  timeout: 10                      # Request timeout (seconds)
+  custom_fingerprints: null        # Custom fingerprint definitions (optional)
+
 port_scan:
   ports: "1-1000,3306,5432,8080,8443"
   scan_type: "syn"  # syn, connect, udp

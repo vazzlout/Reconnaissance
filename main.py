@@ -12,7 +12,7 @@ from typing import Dict, Any, List
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from modules import SubdomainEnumerator, PortScanner, DNSEnumerator
+from modules import SubdomainEnumerator, PortScanner, DNSEnumerator, HTTPRecon, SSLAnalyzer, DirEnumerator, TechFingerprinter
 from utils import (
     load_wordlist, save_json, save_csv, save_txt, 
     print_json, print_table, print_tree,
@@ -130,11 +130,135 @@ class ReconTool:
         print(f"[+] Found {len(formatted['records'])} DNS records")
         return formatted
     
+    async def run_http_recon(self) -> Dict[str, Any]:
+        """Run HTTP reconnaissance"""
+        print(f"[+] Starting HTTP reconnaissance for {self.target}")
+        
+        http_config = self.config.get('http_recon', {})
+        timeout = http_config.get('timeout', 10)
+        follow_redirects = http_config.get('follow_redirects', True)
+        test_methods = http_config.get('test_methods', True)
+        
+        recon = HTTPRecon(
+            self.target,
+            stealth_scheduler=self.stealth_scheduler,
+            timeout=timeout,
+            follow_redirects=follow_redirects
+        )
+        
+        results = await recon.run()
+        await recon.close()
+        
+        return results
+    
+    async def run_ssl_analyzer(self) -> Dict[str, Any]:
+        """Run SSL/TLS certificate analysis"""
+        print(f"[+] Starting SSL analysis for {self.target}")
+        
+        ssl_config = self.config.get('ssl_analyzer', {})
+        port = ssl_config.get('port', 443)
+        timeout = ssl_config.get('timeout', 10)
+        
+        analyzer = SSLAnalyzer(
+            self.target,
+            port=port,
+            stealth_scheduler=self.stealth_scheduler,
+            timeout=timeout
+        )
+        
+        results = await analyzer.run()
+        await analyzer.close()
+        
+        # Convert to dict for serialization
+        def default_serializer(obj):
+            if hasattr(obj, '__dict__'):
+                return obj.__dict__
+            return str(obj)
+        
+        import json
+        return json.loads(json.dumps(results.__dict__, default=default_serializer))
+    
+    async def run_dir_enum(self) -> Dict[str, Any]:
+        """Run directory/file enumeration"""
+        print(f"[+] Starting directory enumeration for {self.target}")
+        
+        dir_config = self.config.get('dir_enum', {})
+        timeout = dir_config.get('timeout', 10)
+        threads = dir_config.get('threads', 20)
+        recursive = dir_config.get('recursive', False)
+        max_depth = dir_config.get('max_depth', 3)
+        extensions = dir_config.get('extensions', None)
+        detect_tech = dir_config.get('detect_tech', True)
+        follow_redirects = dir_config.get('follow_redirects', True)
+        status_codes = dir_config.get('status_codes', None)
+        exclude_status = dir_config.get('exclude_status', None)
+        
+        enum = DirEnumerator(
+            self.target,
+            stealth_scheduler=self.stealth_scheduler,
+            timeout=timeout,
+            threads=threads,
+            recursive=recursive,
+            max_depth=max_depth,
+            extensions=extensions,
+            detect_tech=detect_tech,
+            follow_redirects=follow_redirects,
+            status_codes=status_codes,
+            exclude_status=exclude_status
+        )
+        
+        results = await enum.run()
+        await enum.close()
+        
+        return results
+    
+    async def run_tech_fingerprint(self) -> Dict[str, Any]:
+        """Run technology fingerprinting"""
+        print(f"[+] Starting technology fingerprinting for {self.target}")
+        
+        tech_config = self.config.get('tech_fingerprint', {})
+        timeout = tech_config.get('timeout', 10)
+        custom_fingerprints = tech_config.get('custom_fingerprints', None)
+        
+        fingerprinter = TechFingerprinter(
+            stealth_scheduler=self.stealth_scheduler,
+            timeout=timeout,
+            custom_fingerprints=custom_fingerprints
+        )
+        
+        # Build URLs to fingerprint
+        urls = [self.target]
+        if not self.target.startswith(('http://', 'https://')):
+            urls = [f"https://{self.target}", f"http://{self.target}"]
+        
+        results = await fingerprinter.fingerprint_multiple(urls)
+        await fingerprinter.close()
+        
+        # Convert to serializable format
+        serializable_results = {}
+        for url, techs in results.items():
+            serializable_results[url] = [
+                {
+                    'name': t.name,
+                    'version': t.version,
+                    'categories': t.categories,
+                    'confidence': t.confidence,
+                    'evidence': t.evidence
+                }
+                for t in techs
+            ]
+        
+        return serializable_results
+    
     async def run_all(self) -> Dict[str, Any]:
         """Run all reconnaissance modules"""
         self.results["subdomain_enum"] = await self.run_subdomain_enum()
         self.results["port_scan"] = self.run_port_scan()
         self.results["dns_enum"] = self.run_dns_enum()
+        self.results["http_recon"] = await self.run_http_recon()
+        self.results["ssl_analyzer"] = await self.run_ssl_analyzer()
+        self.results["dir_enum"] = await self.run_dir_enum()
+        self.results["tech_fingerprint"] = await self.run_tech_fingerprint()
         return self.results
     
     def save_results(self, output_file: str):
@@ -178,6 +302,10 @@ async def main():
     parser.add_argument("--subdomain", action="store_true", help="Run subdomain enumeration only")
     parser.add_argument("--portscan", action="store_true", help="Run port scan only")
     parser.add_argument("--dns", action="store_true", help="Run DNS enumeration only")
+    parser.add_argument("--http", action="store_true", help="Run HTTP reconnaissance only")
+    parser.add_argument("--ssl", action="store_true", help="Run SSL/TLS analysis only")
+    parser.add_argument("--dir", action="store_true", help="Run directory/file enumeration only")
+    parser.add_argument("--tech", action="store_true", help="Run technology fingerprinting only")
     
     # Stealth/Evasion options
     stealth_group = parser.add_argument_group('Stealth/Evasion Options')
@@ -236,6 +364,14 @@ async def main():
         tool.results["port_scan"] = tool.run_port_scan()
     elif args.dns:
         tool.results["dns_enum"] = tool.run_dns_enum()
+    elif args.http:
+        tool.results["http_recon"] = await tool.run_http_recon()
+    elif args.ssl:
+        tool.results["ssl_analyzer"] = await tool.run_ssl_analyzer()
+    elif args.dir:
+        tool.results["dir_enum"] = await tool.run_dir_enum()
+    elif args.tech:
+        tool.results["tech_fingerprint"] = await tool.run_tech_fingerprint()
     else:
         await tool.run_all()
     
