@@ -136,7 +136,7 @@ Build a comprehensive, stealthy, modular reconnaissance toolkit for security ass
 
 ---
 
-## Module Architecture (Planned)
+## Module Architecture (Current)
 
 ```
 recon_tool/
@@ -144,9 +144,9 @@ recon_tool/
 │   ├── subdomain_enum.py      ✅ Done
 │   ├── port_scanner.py        ✅ Done
 │   ├── dns_enum.py            ✅ Done
-│   ├── http_recon.py          🔄 Phase 1
-│   ├── dir_enum.py            🔄 Phase 1
-│   ├── tech_fingerprint.py    🔄 Phase 1
+│   ├── http_recon.py          ✅ Done
+│   ├── dir_enum.py            ✅ Done
+│   ├── tech_fingerprint.py    ✅ Done
 │   ├── ssl_analyzer.py        ✅ Done
 │   ├── email_harvester.py     ✅ Done
 │   ├── employee_enum.py       ✅ Done
@@ -208,7 +208,7 @@ packaging>=23.0          # Version comparison
 # Phase 2
 github3.py>=3.0.0        # GitHub API
 python-linkedin>=1.0     # LinkedIn (if available)
-hunter-sdk>=1.0.0        # Hunter.io API
+hunter-sdk>=0.0.9        # Hunter.io API
 python-whois>=0.9.0      # WHOIS queries
 pymupdf>=1.23.0          # PDF metadata extraction (PyMuPDF)
 python-docx>=1.0.0       # DOCX metadata extraction

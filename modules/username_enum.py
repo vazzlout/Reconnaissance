@@ -235,6 +235,22 @@ class UsernameEnumerator:
         if not self.config.generate_permutations:
             return list(usernames)
         
+        # Use default patterns if permutation_patterns is None
+        patterns = self.config.permutation_patterns or [
+            '{username}',
+            '{username}{year}',
+            '{username}{number}',
+            '{username}_',
+            '_{username}',
+            '{username}.',
+            '.{username}',
+            '{first}{last}',
+            '{first}.{last}',
+            '{first}_{last}',
+            '{f}{last}',
+            '{first}{l}',
+        ]
+        
         # Extract first/last names from base usernames
         name_parts = {}
         for base in self.config.base_usernames:
@@ -261,7 +277,7 @@ class UsernameEnumerator:
             f = parts.get('f', first[0] if first else '')
             l = parts.get('l', last[0] if last else '')
             
-            for pattern in self.config.permutation_patterns:
+            for pattern in patterns:
                 try:
                     # Basic patterns
                     username = pattern.format(

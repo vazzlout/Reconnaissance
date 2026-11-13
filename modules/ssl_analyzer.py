@@ -24,6 +24,18 @@ import logging
 
 from utils import StealthScheduler, fetch_with_stealth
 
+# Import cryptography for certificate parsing (replaces deprecated OpenSSL API)
+try:
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
+    from cryptography.hazmat.primitives.serialization import Encoding
+    from cryptography.x509.oid import NameOID, ExtensionOID, AuthorityInformationAccessOID
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    logging.warning("cryptography library not available, some SSL features may be limited")
+
 
 @dataclass
 class CertificateInfo:
@@ -147,8 +159,302 @@ class SSLAnalyzer:
         if self.session and not self.session.closed:
             await self.session.close()
     
+    async def get_certificate_chain(self) -> List[OpenSSL.crypto.X509]:
+        """Get full certificate chain from server"""
+        try:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            
+            # Use OpenSSL to get chain
+            conn = OpenSSL.SSL.Connection(
+                OpenSSL.SSL.Context(OpenSSL.SSL.TLS_CLIENT_METHOD),
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            )
+            conn.set_connect_state()
+            conn.set_tlsext_host_name(self.hostname.encode())
+            conn.connect((self.hostname, self.port))
+            conn.do_handshake()
+            
+            chain = conn.get_peer_cert_chain()
+            conn.close()
+            
+            return chain if chain else []
+        except Exception as e:
+            print(f"[!] Error getting certificate chain: {e}")
+            return []
+    
     def _parse_certificate(self, cert: OpenSSL.crypto.X509) -> CertificateInfo:
-        """Parse OpenSSL certificate to CertificateInfo"""
+        """Parse OpenSSL certificate to CertificateInfo using cryptography library"""
+        # Convert OpenSSL certificate to cryptography certificate
+        if not CRYPTOGRAPHY_AVAILABLE:
+            # Fallback to OpenSSL API if cryptography is not available
+            return self._parse_certificate_openssl(cert)
+        
+        # Convert OpenSSL certificate to cryptography certificate
+        der = OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, cert)
+        cert_cryptography = x509.load_der_x509_certificate(der)
+        
+        # Subject
+        subject = {}
+        for attr in cert_cryptography.subject:
+            subject[attr.oid._name] = attr.value
+        
+        # Issuer
+        issuer = {}
+        for attr in cert_cryptography.issuer:
+            issuer[attr.oid._name] = attr.value
+        
+        # Serial number
+        serial = format(cert_cryptography.serial_number, 'x').upper()
+        
+        # Validity
+        not_before = cert_cryptography.not_valid_before_utc
+        not_after = cert_cryptography.not_valid_after_utc
+        
+        # Version
+        version = cert_cryptography.version.value
+        
+        # Signature algorithm
+        sig_alg = cert_cryptography.signature_algorithm_oid._name
+        
+        # Public key
+        pubkey = cert_cryptography.public_key()
+        if isinstance(pubkey, rsa.RSAPublicKey):
+            pubkey_algo = 'RSA'
+            pubkey_size = pubkey.key_size
+        elif isinstance(pubkey, dsa.DSAPublicKey):
+            pubkey_algo = 'DSA'
+            pubkey_size = pubkey.key_size
+        elif isinstance(pubkey, ec.EllipticCurvePublicKey):
+            pubkey_algo = 'EC'
+            pubkey_size = pubkey.key_size
+        else:
+            pubkey_algo = 'Unknown'
+            pubkey_size = 0
+        
+        # Fingerprints
+        der = cert_cryptography.public_bytes(Encoding.DER)
+        import hashlib
+        fp_sha1 = hashlib.sha1(der).hexdigest().upper()
+        fp_sha256 = hashlib.sha256(der).hexdigest().upper()
+        fp_md5 = hashlib.md5(der).hexdigest().upper()
+        
+        # Extensions
+        san = []
+        ocsp_uris = []
+        crl_uris = []
+        ca_issuers_uris = []
+        extensions = {}
+        is_ca = False
+        path_length = None
+        key_usage = []
+        ext_key_usage = []
+        
+        for ext in cert_cryptography.extensions:
+            ext_name = ext.oid._name
+            ext_value = ext.value
+            extensions[ext_name] = str(ext_value)
+            
+            # Subject Alternative Names
+            if ext.oid == ExtensionOID.SUBJECT_ALTERNATIVE_NAME:
+                for name in ext_value:
+                    san.append(str(name))
+            
+            # Authority Information Access
+            elif ext.oid == ExtensionOID.AUTHORITY_INFORMATION_ACCESS:
+                for access in ext_value:
+                    if access.access_method == AuthorityInformationAccessOID.OCSP:
+                        ocsp_uris.append(str(access.access_location.value))
+                    elif access.access_method == AuthorityInformationAccessOID.CA_ISSUERS:
+                        ca_issuers_uris.append(str(access.access_location.value))
+            
+            # CRL Distribution Points
+            elif ext.oid == ExtensionOID.CRL_DISTRIBUTION_POINTS:
+                for point in ext_value:
+                    if point.full_name:
+                        for name in point.full_name:
+                            if isinstance(name, x509.UniformResourceIdentifier):
+                                crl_uris.append(str(name.value))
+            
+            # Basic Constraints
+            elif ext.oid == ExtensionOID.BASIC_CONSTRAINTS:
+                if ext_value.ca:
+                    is_ca = True
+                if ext_value.path_length is not None:
+                    path_length = ext_value.path_length
+            
+            # Key Usage
+            elif ext.oid == ExtensionOID.KEY_USAGE:
+                if ext_value.digital_signature:
+                    key_usage.append('Digital Signature')
+                if ext_value.content_commitment:
+                    key_usage.append('Content Commitment')
+                if ext_value.key_encipherment:
+                    key_usage.append('Key Encipherment')
+                if ext_value.data_encipherment:
+                    key_usage.append('Data Encipherment')
+                if ext_value.key_agreement:
+                    key_usage.append('Key Agreement')
+                if ext_value.key_cert_sign:
+                    key_usage.append('Certificate Sign')
+                if ext_value.crl_sign:
+                    key_usage.append('CRL Sign')
+                # encipher_only and decipher_only are only defined when key_agreement is True
+                if ext_value.key_agreement:
+                    if ext_value.encipher_only:
+                        key_usage.append('Encipher Only')
+                    if ext_value.decipher_only:
+                        key_usage.append('Decipher Only')
+            
+            # Extended Key Usage
+            elif ext.oid == ExtensionOID.EXTENDED_KEY_USAGE:
+                for usage in ext_value:
+                    ext_key_usage.append(usage._name)
+        
+        # Subject
+        subject = {}
+        for attr in cert_cryptography.subject:
+            subject[attr.oid._name] = attr.value
+        
+        # Issuer
+        issuer = {}
+        for attr in cert_cryptography.issuer:
+            issuer[attr.oid._name] = attr.value
+        
+        # Serial number
+        serial = format(cert_cryptography.serial_number, 'x').upper()
+        
+        # Validity
+        not_before = cert_cryptography.not_valid_before_utc
+        not_after = cert_cryptography.not_valid_after_utc
+        
+        # Version
+        version = cert_cryptography.version.value
+        
+        # Signature algorithm
+        sig_alg = cert_cryptography.signature_algorithm_oid._name
+        
+        # Public key
+        pubkey = cert_cryptography.public_key()
+        if isinstance(pubkey, rsa.RSAPublicKey):
+            pubkey_algo = 'RSA'
+            pubkey_size = pubkey.key_size
+        elif isinstance(pubkey, dsa.DSAPublicKey):
+            pubkey_algo = 'DSA'
+            pubkey_size = pubkey.key_size
+        elif isinstance(pubkey, ec.EllipticCurvePublicKey):
+            pubkey_algo = 'EC'
+            pubkey_size = pubkey.key_size
+        else:
+            pubkey_algo = 'Unknown'
+            pubkey_size = 0
+        
+        # Fingerprints
+        der = cert_cryptography.public_bytes(Encoding.DER)
+        import hashlib
+        fp_sha1 = hashlib.sha1(der).hexdigest().upper()
+        fp_sha256 = hashlib.sha256(der).hexdigest().upper()
+        fp_md5 = hashlib.md5(der).hexdigest().upper()
+        
+        # Extensions
+        san = []
+        ocsp_uris = []
+        crl_uris = []
+        ca_issuers_uris = []
+        extensions = {}
+        is_ca = False
+        path_length = None
+        key_usage = []
+        ext_key_usage = []
+        
+        for ext in cert_cryptography.extensions:
+            ext_name = ext.oid._name
+            ext_value = ext.value
+            extensions[ext_name] = str(ext_value)
+            
+            # Subject Alternative Names
+            if ext.oid == ExtensionOID.SUBJECT_ALTERNATIVE_NAME:
+                for name in ext_value:
+                    san.append(str(name))
+            
+            # Authority Information Access
+            elif ext.oid == ExtensionOID.AUTHORITY_INFORMATION_ACCESS:
+                for access in ext_value:
+                    if access.access_method == AuthorityInformationAccessOID.OCSP:
+                        ocsp_uris.append(str(access.access_location.value))
+                    elif access.access_method == AuthorityInformationAccessOID.CA_ISSUERS:
+                        ca_issuers_uris.append(str(access.access_location.value))
+            
+            # CRL Distribution Points
+            elif ext.oid == ExtensionOID.CRL_DISTRIBUTION_POINTS:
+                for point in ext_value:
+                    if point.full_name:
+                        for name in point.full_name:
+                            if isinstance(name, x509.UniformResourceIdentifier):
+                                crl_uris.append(str(name.value))
+            
+            # Basic Constraints
+            elif ext.oid == ExtensionOID.BASIC_CONSTRAINTS:
+                if ext_value.ca:
+                    is_ca = True
+                if ext_value.path_length is not None:
+                    path_length = ext_value.path_length
+            
+            # Key Usage
+            elif ext.oid == ExtensionOID.KEY_USAGE:
+                if ext_value.digital_signature:
+                    key_usage.append('Digital Signature')
+                if ext_value.content_commitment:
+                    key_usage.append('Content Commitment')
+                if ext_value.key_encipherment:
+                    key_usage.append('Key Encipherment')
+                if ext_value.data_encipherment:
+                    key_usage.append('Data Encipherment')
+                if ext_value.key_agreement:
+                    key_usage.append('Key Agreement')
+                if ext_value.key_cert_sign:
+                    key_usage.append('Certificate Sign')
+                if ext_value.crl_sign:
+                    key_usage.append('CRL Sign')
+                # encipher_only and decipher_only are only defined when key_agreement is True
+                if ext_value.key_agreement:
+                    if ext_value.encipher_only:
+                        key_usage.append('Encipher Only')
+                    if ext_value.decipher_only:
+                        key_usage.append('Decipher Only')
+            
+            # Extended Key Usage
+            elif ext.oid == ExtensionOID.EXTENDED_KEY_USAGE:
+                for usage in ext_value:
+                    ext_key_usage.append(usage._name)
+        
+        return CertificateInfo(
+            subject=subject,
+            issuer=issuer,
+            serial_number=serial,
+            not_before=not_before,
+            not_after=not_after,
+            version=version,
+            signature_algorithm=sig_alg,
+            public_key_algorithm=pubkey_algo,
+            public_key_size=pubkey_size,
+            san=san,
+            ocsp_uris=ocsp_uris,
+            crl_uris=crl_uris,
+            ca_issuers_uris=ca_issuers_uris,
+            extensions=extensions,
+            fingerprint_sha1=fp_sha1,
+            fingerprint_sha256=fp_sha256,
+            fingerprint_md5=fp_md5,
+            is_ca=is_ca,
+            path_length=path_length,
+            key_usage=key_usage,
+            extended_key_usage=ext_key_usage
+        )
+    
+    def _parse_certificate_openssl(self, cert: OpenSSL.crypto.X509) -> CertificateInfo:
+        """Parse OpenSSL certificate to CertificateInfo using OpenSSL API (fallback)"""
         # Subject
         subject = {}
         for component in cert.get_subject().get_components():
@@ -278,8 +584,6 @@ class SSLAnalyzer:
             key_usage=key_usage,
             extended_key_usage=ext_key_usage
         )
-    
-    async def get_certificate_chain(self) -> List[OpenSSL.crypto.X509]:
         """Get full certificate chain from server"""
         try:
             context = ssl.create_default_context()

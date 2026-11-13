@@ -11,6 +11,13 @@ A modular reconnaissance toolkit for information gathering during security asses
 - **SSL/TLS Analysis** - Certificate chain validation, CT log monitoring, protocol/cipher enumeration, vulnerability checks (Heartbleed, POODLE, FREAK, Logjam, etc.)
 - **Directory/File Enumeration** - Async brute force with smart wordlists, recursive scanning, soft 404 detection, tech-specific wordlists
 - **Technology Fingerprinting** - Wappalyzer-style detection (80+ technologies), version detection, confidence scoring, implication resolution
+- **Email Harvesting** - Multi-source (Hunter.io, Clearbit, GitHub, WHOIS, search engines, web crawl)
+- **Employee Enumeration** - GitHub org members, company pages, search engines, Hunter.io
+- **Username Enumeration** - Cross-platform (GitHub, Twitter, LinkedIn, Instagram, Reddit, etc.)
+- **Document Intelligence** - Document discovery & metadata extraction (PDF, Office, EXIF)
+- **GitHub/GitLab Recon** - Public repos, secrets, contributors, issues
+- **Breach Intelligence** - HaveIBeenPwned, DeHashed, LeakCheck integration
+- **Auto-Update** - GitHub release checking with auto-pull
 - **Stealth/Evasion** - Token bucket rate limiting, random delays, jitter, user-agent rotation, initial random delay
 - **Modular Design** - Run individual modules or all at once
 - **Multiple Output Formats** - JSON, CSV, TXT, Rich Table, Rich Tree
@@ -28,6 +35,16 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Interactive Menu (Recommended)
+```bash
+# Run interactive menu
+./recon.sh
+
+# Or with Python directly
+python main.py --menu
+```
+
+### Direct Module Execution
 ```bash
 # Run all modules
 python main.py example.com
@@ -40,6 +57,13 @@ python main.py example.com --http
 python main.py example.com --ssl
 python main.py example.com --dir
 python main.py example.com --tech
+python main.py example.com --email
+python main.py example.com --employee
+python main.py example.com --username
+python main.py example.com --docs
+python main.py example.com --github
+python main.py example.com --breach
+python main.py example.com --update
 
 # Save output to file
 python main.py example.com -o results.json
@@ -48,13 +72,32 @@ python main.py example.com -f csv -o results.csv
 # Output formats
 python main.py example.com -f table
 python main.py example.com -f tree
+```
 
-# Custom config
-python main.py example.com -c config.yaml
+### Interactive Menu (recon.sh)
+```bash
+# Run interactive menu
+./recon.sh
 
-# Stealth mode overrides
-python main.py example.com --stealth-rate 5 --stealth-delay-min 2 --stealth-delay-max 10
+# With target
+./recon.sh example.com
+
+# Check for updates
+./recon.sh --update
+```
+
+### Stealth Mode
+```bash
+# Disable stealth for faster scans
 python main.py example.com --no-stealth
+
+# Custom stealth parameters
+python main.py example.com --stealth-rate 5 --stealth-delay-min 2 --stealth-delay-max 10 --stealth-initial-min 10 --stealth-initial-max 60
+```
+
+### Custom Config
+```bash
+python main.py example.com -c config.yaml
 ```
 
 ## Modules Overview

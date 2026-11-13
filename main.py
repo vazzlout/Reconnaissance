@@ -348,19 +348,28 @@ class ReconTool:
                 if linkedin and 'linkedin.com/in/' in linkedin:
                     base_usernames.append(linkedin.split('linkedin.com/in/')[-1])
         
-        config = UsernameEnumConfig(
-            base_usernames=base_usernames,
-            generate_permutations=username_config.get('generate_permutations', True),
-            permutation_patterns=username_config.get('permutation_patterns', None),
-            years=username_config.get('years', None),
-            numbers=username_config.get('numbers', None),
-            platforms=username_config.get('platforms', None),
-            max_concurrent=username_config.get('max_concurrent', 10),
-            request_delay=username_config.get('request_delay', 1.0),
-            timeout=username_config.get('timeout', 10),
-            verify_profiles=username_config.get('verify_profiles', True),
-            min_confidence=username_config.get('min_confidence', 50),
-        )
+        # Build config dict, only including non-None values to allow dataclass defaults
+        config_kwargs = {
+            'base_usernames': base_usernames,
+            'generate_permutations': username_config.get('generate_permutations', True),
+            'max_concurrent': username_config.get('max_concurrent', 10),
+            'request_delay': username_config.get('request_delay', 1.0),
+            'timeout': username_config.get('timeout', 10),
+            'verify_profiles': username_config.get('verify_profiles', True),
+            'min_confidence': username_config.get('min_confidence', 50),
+        }
+        
+        # Only add optional fields if they are not None in config
+        if username_config.get('permutation_patterns') is not None:
+            config_kwargs['permutation_patterns'] = username_config['permutation_patterns']
+        if username_config.get('years') is not None:
+            config_kwargs['years'] = username_config['years']
+        if username_config.get('numbers') is not None:
+            config_kwargs['numbers'] = username_config['numbers']
+        if username_config.get('platforms') is not None:
+            config_kwargs['platforms'] = username_config['platforms']
+        
+        config = UsernameEnumConfig(**config_kwargs)
         
         enumerator = UsernameEnumerator(
             config=config,
@@ -609,6 +618,90 @@ def load_config(config_path: str) -> Dict:
         return {}
 
 
+async def run_module(tool: 'ReconTool', module_name: str, module_func, results: Dict) -> bool:
+    """Run a single module and handle errors"""
+    try:
+        print(f"\n[+] Running {module_name}...")
+        result = await module_func()
+        results[module_name] = result
+        print(f"[+] {module_name} completed successfully")
+        return True
+    except Exception as e:
+        print(f"\n[!] Error in {module_name}: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        results[module_name] = {"error": str(e), "type": type(e).__name__}
+        return False
+
+
+async def interactive_menu(tool: 'ReconTool', args):
+    """Interactive menu for running modules"""
+    modules = [
+        ("subdomain_enum", "Subdomain Enumeration", tool.run_subdomain_enum),
+        ("port_scan", "Port Scan", tool.run_port_scan),
+        ("dns_enum", "DNS Enumeration", tool.run_dns_enum),
+        ("http_recon", "HTTP Reconnaissance", tool.run_http_recon),
+        ("ssl_analyzer", "SSL/TLS Analysis", tool.run_ssl_analyzer),
+        ("dir_enum", "Directory/File Enumeration", tool.run_dir_enum),
+        ("tech_fingerprint", "Technology Fingerprinting", tool.run_tech_fingerprint),
+        ("email_harvester", "Email Harvesting", tool.run_email_harvester),
+        ("employee_enum", "Employee Enumeration", tool.run_employee_enum),
+        ("username_enum", "Username Enumeration", tool.run_username_enum),
+        ("document_intel", "Document Intelligence", tool.run_document_intel),
+        ("osint_github", "GitHub/GitLab Reconnaissance", tool.run_osint_github),
+        ("breach_intel", "Breach Intelligence", tool.run_breach_intel),
+        ("auto_update", "Check for Updates", tool.run_auto_update),
+    ]
+    
+    while True:
+        print("\n" + "=" * 50)
+        print(f"  Recon Tool - Target: {tool.target}")
+        print("=" * 50)
+        for i, (key, name, _) in enumerate(modules, 1):
+            status = "✓" if key in tool.results else " "
+            print(f"  [{i:2d}] {name} {status}")
+        print("  [ 0] Run All Modules")
+        print("  [ q] Quit")
+        print("-" * 50)
+        
+        choice = input("Select module (number, 0 for all, q to quit): ").strip().lower()
+        
+        if choice == 'q':
+            break
+        elif choice == '0':
+            print("\n[+] Running all modules...")
+            await tool.run_all()
+            print("[+] All modules completed")
+        else:
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(modules):
+                    key, name, func = modules[idx]
+                    await run_module(tool, key, func, tool.results)
+                else:
+                    print("[!] Invalid selection")
+            except ValueError:
+                print("[!] Invalid input")
+        
+        # Show results summary
+        if tool.results:
+            print("\n--- Current Results Summary ---")
+            for key, result in tool.results.items():
+                if isinstance(result, dict) and "error" in result:
+                    print(f"  {key}: ERROR - {result['error']}")
+                elif isinstance(result, dict):
+                    print(f"  {key}: OK ({len(result)} keys)")
+                else:
+                    print(f"  {key}: {type(result).__name__}")
+    
+    # Save/print final results
+    if args.output:
+        tool.save_results(args.output)
+        print(f"\n[+] Results saved to {args.output}")
+    else:
+        tool.print_results()
+
+
 async def main():
     parser = argparse.ArgumentParser(description="Recon Tool - Reconnaissance toolkit")
     parser.add_argument("target", help="Target domain or IP")
@@ -629,6 +722,7 @@ async def main():
     parser.add_argument("--github", action="store_true", help="Run GitHub/GitLab reconnaissance only")
     parser.add_argument("--breach", action="store_true", help="Run breach intelligence only")
     parser.add_argument("--update", action="store_true", help="Check and apply updates")
+    parser.add_argument("--menu", action="store_true", help="Run interactive menu mode")
     
     # Stealth/Evasion options
     stealth_group = parser.add_argument_group('Stealth/Evasion Options')
@@ -681,41 +775,53 @@ async def main():
     
     tool = ReconTool(args.target, args.format, config, stealth_enabled=not args.no_stealth)
     
-    if args.subdomain:
-        tool.results["subdomain_enum"] = await tool.run_subdomain_enum()
-    elif args.portscan:
-        tool.results["port_scan"] = tool.run_port_scan()
-    elif args.dns:
-        tool.results["dns_enum"] = tool.run_dns_enum()
-    elif args.http:
-        tool.results["http_recon"] = await tool.run_http_recon()
-    elif args.ssl:
-        tool.results["ssl_analyzer"] = await tool.run_ssl_analyzer()
-    elif args.dir:
-        tool.results["dir_enum"] = await tool.run_dir_enum()
-    elif args.tech:
-        tool.results["tech_fingerprint"] = await tool.run_tech_fingerprint()
-    elif args.email:
-        tool.results["email_harvester"] = await tool.run_email_harvester()
-    elif args.employee:
-        tool.results["employee_enum"] = await tool.run_employee_enum()
-    elif args.username:
-        tool.results["username_enum"] = await tool.run_username_enum()
-    elif args.docs:
-        tool.results["document_intel"] = await tool.run_document_intel()
-    elif args.github:
-        tool.results["osint_github"] = await tool.run_osint_github()
-    elif args.breach:
-        tool.results["breach_intel"] = await tool.run_breach_intel()
-    elif args.update:
-        tool.results["auto_update"] = await tool.run_auto_update()
-    else:
-        await tool.run_all()
+    # Check if any specific module flag is set
+    module_flags = [
+        args.subdomain, args.portscan, args.dns, args.http, args.ssl,
+        args.dir, args.tech, args.email, args.employee, args.username,
+        args.docs, args.github, args.breach, args.update
+    ]
     
-    if args.output:
-        tool.save_results(args.output)
+    if args.menu or not any(module_flags):
+        # Interactive menu mode
+        await interactive_menu(tool, args)
     else:
-        tool.print_results()
+        # Direct module execution (original behavior)
+        if args.subdomain:
+            tool.results["subdomain_enum"] = await tool.run_subdomain_enum()
+        elif args.portscan:
+            tool.results["port_scan"] = tool.run_port_scan()
+        elif args.dns:
+            tool.results["dns_enum"] = tool.run_dns_enum()
+        elif args.http:
+            tool.results["http_recon"] = await tool.run_http_recon()
+        elif args.ssl:
+            tool.results["ssl_analyzer"] = await tool.run_ssl_analyzer()
+        elif args.dir:
+            tool.results["dir_enum"] = await tool.run_dir_enum()
+        elif args.tech:
+            tool.results["tech_fingerprint"] = await tool.run_tech_fingerprint()
+        elif args.email:
+            tool.results["email_harvester"] = await tool.run_email_harvester()
+        elif args.employee:
+            tool.results["employee_enum"] = await tool.run_employee_enum()
+        elif args.username:
+            tool.results["username_enum"] = await tool.run_username_enum()
+        elif args.docs:
+            tool.results["document_intel"] = await tool.run_document_intel()
+        elif args.github:
+            tool.results["osint_github"] = await tool.run_osint_github()
+        elif args.breach:
+            tool.results["breach_intel"] = await tool.run_breach_intel()
+        elif args.update:
+            tool.results["auto_update"] = await tool.run_auto_update()
+        else:
+            await tool.run_all()
+        
+        if args.output:
+            tool.save_results(args.output)
+        else:
+            tool.print_results()
 
 
 if __name__ == "__main__":

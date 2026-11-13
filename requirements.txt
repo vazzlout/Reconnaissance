@@ -4,6 +4,10 @@ dnspython>=2.4.0
 python-nmap>=0.7.1
 python-whois>=0.9.0
 
+# SSL Analysis
+pyopenssl>=23.0.0
+cryptography>=42.0.0
+
 # Async support
 aiohttp>=3.9.0
 asyncio-throttle>=1.0.0
@@ -16,7 +20,7 @@ packaging>=23.0
 
 # OSINT APIs
 github3.py>=3.0.0
-hunter-sdk>=1.0.0
+hunter-sdk>=0.0.9
 python-linkedin>=1.0
 
 # Document Intelligence
