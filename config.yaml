@@ -109,6 +109,202 @@ tech_fingerprint:
   timeout: 10                      # Request timeout (seconds)
   custom_fingerprints: null        # Custom fingerprint definitions (optional)
 
+# Email Harvester Configuration
+email_harvester:
+  # API Keys (set via environment variables or here)
+  hunter_api_key: ""               # Hunter.io API key
+  clearbit_api_key: ""             # Clearbit API key
+  github_token: ""                 # GitHub personal access token
+  linkedin_cookie: ""              # LinkedIn session cookie (li_at)
+  
+  # Source toggles
+  use_hunter: true                 # Use Hunter.io API
+  use_clearbit: true               # Use Clearbit API
+  use_github: true                 # Use GitHub API
+  use_whois: true                  # Use WHOIS records
+  use_search_engines: true         # Use search engines (DuckDuckGo, Bing)
+  use_web_crawl: true              # Crawl website for emails
+  
+  # Limits
+  max_results_per_source: 100      # Max results per source
+  max_pages_per_engine: 10         # Max pages per search engine
+  request_delay: 2.0               # Delay between requests (seconds)
+  
+  # Verification
+  verify_emails: false             # Verify emails via SMTP
+  smtp_check: false                # Enable SMTP verification
+
+# Employee Enumeration Configuration
+employee_enum:
+  # API Keys (set via environment variables or here)
+  linkedin_cookie: ""              # LinkedIn session cookie (li_at)
+  github_token: ""                 # GitHub personal access token
+  hunter_api_key: ""               # Hunter.io API key
+  clearbit_api_key: ""             # Clearbit API key
+  
+  # Source toggles
+  use_linkedin: true               # Use LinkedIn (requires cookie)
+  use_github: true                 # Use GitHub API
+  use_company_pages: true          # Scrape company website pages
+  use_search_engines: true         # Use search engines
+  use_hunter: true                 # Use Hunter.io API
+  
+  # Filters
+  keywords: []                     # Keywords to filter (e.g., ['engineer', 'developer', 'admin'])
+  exclude_keywords: []             # Keywords to exclude (e.g., ['intern', 'student'])
+  locations: []                    # Locations to filter (e.g., ['San Francisco', 'New York'])
+  
+  # Limits
+  max_results_per_source: 100      # Max results per source
+  max_pages: 10                    # Max pages per source
+  request_delay: 2.0               # Delay between requests (seconds)
+  
+  # Company name (optional, auto-detected from domain if not set)
+  company_name: ""
+  
+  # Verification
+  verify_emails: false             # Verify emails via SMTP
+
+# Username Enumeration Configuration
+username_enum:
+  # Base usernames to check (auto-populated from email_harvester and employee_enum if empty)
+  base_usernames: []
+  
+  # Generate permutations
+  generate_permutations: true      # Generate username permutations
+  permutation_patterns: null       # Custom patterns (null = use defaults)
+  years: null                      # Years to append (null = 2020-2024)
+  numbers: null                    # Numbers to append (null = 1-99)
+  
+  # Platforms to check (null = use defaults)
+  platforms: null
+  
+  # Request settings
+  max_concurrent: 10               # Max concurrent requests
+  request_delay: 1.0               # Delay between requests (seconds)
+  timeout: 10                      # Request timeout (seconds)
+  
+  # Verification
+  verify_profiles: true            # Verify profiles exist
+  min_confidence: 50               # Minimum confidence threshold
+
+# Document Intelligence Configuration
+document_intel:
+  # Search settings
+  max_results_per_query: 50        # Max results per search query
+  max_pages_per_engine: 5          # Max pages per search engine
+  request_delay: 2.0               # Delay between requests (seconds)
+  
+  # File types to search (null = use defaults)
+  file_types: null
+  
+  # Search engines
+  use_google: true                 # Use Google search
+  use_bing: true                   # Use Bing search
+  use_duckduckgo: true             # Use DuckDuckGo search
+  
+  # Crawl settings
+  crawl_website: true              # Crawl website for documents
+  max_crawl_pages: 100             # Max pages to crawl
+  max_file_size: 52428800          # Max file size to download (50MB)
+  
+  # Metadata extraction
+  extract_pdf: true                # Extract PDF metadata
+  extract_office: true             # Extract Office document metadata
+  extract_exif: true               # Extract EXIF data from images
+  extract_custom: true             # Extract custom metadata
+  
+  # Download settings
+  download_files: true             # Download files for analysis
+  save_to_disk: false              # Save downloaded files to disk
+  output_dir: "./documents"        # Output directory for saved files
+  
+  # Filters
+  min_file_size: 1024              # Min file size (1KB)
+  keywords: []                     # Keywords to search for
+  exclude_keywords: []             # Keywords to exclude
+
+# GitHub/GitLab Reconnaissance Configuration
+osint_github:
+  # API Keys (set via environment variables or here)
+  github_token: ""                 # GitHub personal access token
+  gitlab_token: ""                 # GitLab personal access token
+  gitlab_url: "https://gitlab.com" # GitLab instance URL
+  
+  # Source toggles
+  use_github: true                 # Use GitHub API
+  use_gitlab: true                 # Use GitLab API
+  
+  # Analysis toggles
+  scan_secrets: true               # Scan repositories for secrets
+  scan_contributors: true          # Enumerate contributors
+  scan_issues: true                # Analyze issues
+  scan_commits: true               # Analyze commits
+  deep_scan: false                 # Deep scan (more thorough but slower)
+  
+  # Limits
+  max_repos_per_org: 100           # Max repositories per organization
+  max_contributors_per_repo: 50    # Max contributors per repository
+  max_commits_per_repo: 100        # Max commits to analyze per repository
+  max_files_per_repo: 500          # Max files to scan per repository
+  request_delay: 1.0               # Delay between requests (seconds)
+  
+  # Filters
+  min_stars: 0                     # Minimum stars for repository
+  min_size: 0                      # Minimum repository size (KB)
+  languages: []                    # Filter by languages (empty = all)
+  exclude_forks: true              # Exclude forked repositories
+  exclude_archived: true           # Exclude archived repositories
+
+# Breach Intelligence Configuration
+breach_intel:
+  # API Keys (set via environment variables or here)
+  hibp_api_key: ""                 # HaveIBeenPwned API key
+  dehashed_email: ""               # DeHashed email
+  dehashed_key: ""                 # DeHashed API key
+  leakcheck_key: ""                # LeakCheck API key
+  
+  # Source toggles
+  use_hibp: true                   # Use HaveIBeenPwned API
+  use_dehashed: true               # Use DeHashed API
+  use_leakcheck: true              # Use LeakCheck API
+  
+  # Settings
+  request_delay: 1.5               # Delay between requests (seconds)
+  timeout: 30                      # Request timeout (seconds)
+  max_retries: 3                   # Max retries for failed requests
+  
+  # Domain breach check
+  check_domain_breaches: true      # Check domain breaches on HIBP
+  
+  # Paste search
+  search_pastes: true              # Search pastes on HIBP
+  
+  # Filters
+  min_breach_size: 0               # Minimum breach size to report
+  exclude_spam_lists: true         # Exclude spam lists from HIBP
+  exclude_malware: true            # Exclude malware-related breaches
+  
+  # Emails to check (auto-populated from email_harvester and employee_enum if empty)
+  emails: []
+
+# Auto-Update Configuration
+auto_update:
+  # Repository settings
+  repo_owner: "vazzlout"           # GitHub repository owner
+  repo_name: "Reconnaissance"      # GitHub repository name
+  current_version: "1.0.0"         # Current version
+  
+  # Update settings
+  check_interval_hours: 24         # Check interval in hours
+  auto_pull: false                 # Auto pull without confirmation
+  auto_install_deps: false         # Auto install dependencies
+  backup_before_update: true       # Create backup before update
+  notify_only: false               # Only notify, don't apply update
+  
+  # GitHub API
+  github_token: ""                 # GitHub API token (for higher rate limits)
+
 port_scan:
   ports: "1-1000,3306,5432,8080,8443"
   scan_type: "syn"  # syn, connect, udp

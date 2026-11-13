@@ -2,6 +2,7 @@
 requests>=2.31.0
 dnspython>=2.4.0
 python-nmap>=0.7.1
+python-whois>=0.9.0
 
 # Async support
 aiohttp>=3.9.0
@@ -11,6 +12,19 @@ asyncio-throttle>=1.0.0
 click>=8.1.0
 rich>=13.0.0
 pyyaml>=6.0.0
+packaging>=23.0
+
+# OSINT APIs
+github3.py>=3.0.0
+hunter-sdk>=1.0.0
+python-linkedin>=1.0
+
+# Document Intelligence
+pymupdf>=1.23.0          # PDF metadata extraction (PyMuPDF)
+python-docx>=1.0.0       # DOCX metadata extraction
+openpyxl>=3.1.0          # XLSX metadata extraction
+python-pptx>=0.6.0       # PPTX metadata extraction
+pillow>=10.0.0           # EXIF metadata extraction (PIL)
 
 # Data processing
 pandas>=2.1.0

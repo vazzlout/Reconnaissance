@@ -32,22 +32,22 @@ Build a comprehensive, stealthy, modular reconnaissance toolkit for security ass
 ## Phase 2: OSINT & Intelligence Gathering (Week 2-3) 🔍 MEDIUM PRIORITY
 
 ### 2.1 Email & Identity Intelligence
-- [ ] **Email Harvester** - Hunter.io, Clearbit, LinkedIn, GitHub, WHOIS
-- [ ] **Employee Enumeration** - LinkedIn, company pages, GitHub org members
-- [ ] **Username Enumeration** - Across platforms (GitHub, Twitter, etc.)
+- [x] **Email Harvester** - Hunter.io, Clearbit, LinkedIn, GitHub, WHOIS
+- [x] **Employee Enumeration** - LinkedIn, company pages, GitHub org members
+- [x] **Username Enumeration** - Across platforms (GitHub, Twitter, etc.)
 
 ### 2.2 Document & Metadata Intelligence
-- [ ] **Document Discovery** - site:domain filetype:pdf/doc/xls
-- [ ] **Metadata Extraction** - Author, software, timestamps, internal paths
-- [ ] **EXIF Data** - From images on web assets
+- [x] **Document Discovery** - site:domain filetype:pdf/doc/xls
+- [x] **Metadata Extraction** - Author, software, timestamps, internal paths
+- [x] **EXIF Data** - From images on web assets
 
 ### 2.3 Code & Repository Intelligence
-- [ ] **GitHub/GitLab Recon** - Public repos, secrets, contributors, issues
+- [x] **GitHub/GitLab Recon** - Public repos, secrets, contributors, issues
 - [ ] **Git History Analysis** - Deleted secrets, sensitive files
 - [ ] **Package Registry** - npm, PyPI, Maven, Docker Hub for org packages
 
 ### 2.4 Threat Intelligence Integration
-- [ ] **Breach Data** - HaveIBeenPwned, DeHashed, LeakCheck
+- [x] **Breach Data** - HaveIBeenPwned, DeHashed, LeakCheck
 - [ ] **Malware/Phishing** - URLhaus, PhishTank, OpenPhish
 - [ ] **IOC Enrichment** - VirusTotal, AlienVault OTX, AbuseIPDB
 
@@ -148,9 +148,13 @@ recon_tool/
 │   ├── dir_enum.py            🔄 Phase 1
 │   ├── tech_fingerprint.py    🔄 Phase 1
 │   ├── ssl_analyzer.py        ✅ Done
-│   ├── osint_email.py         🔄 Phase 2
-│   ├── osint_github.py        🔄 Phase 2
-│   ├── osint_docs.py          🔄 Phase 2
+│   ├── email_harvester.py     ✅ Done
+│   ├── employee_enum.py       ✅ Done
+│   ├── username_enum.py       ✅ Done
+│   ├── osint_docs.py          ✅ Done
+│   ├── osint_github.py        ✅ Done
+│   ├── breach_intel.py        ✅ Done
+│   ├── auto_update.py         ✅ Done
 │   ├── vuln_mapper.py         🔄 Phase 3
 │   ├── cloud_enum.py          🔄 Phase 4
 │   ├── takeover_check.py      🔄 Phase 4
@@ -178,6 +182,13 @@ recon_tool/
 3. **Directory Brute Force** - ✅ Done (~500 lines, reuses stealth scheduler)
 4. **Subdomain Takeover Check** - 🔄 Phase 2 (uses DNS enum results)
 5. **Technology Fingerprinting** - ✅ Done (~800 lines, Wappalyzer-style)
+6. **Email Harvester** - ✅ Done (~800 lines, multi-source OSINT)
+7. **Employee Enumeration** - ✅ Done (~800 lines, multi-source OSINT)
+8. **Username Enumeration** - ✅ Done (~800 lines, cross-platform OSINT)
+9. **Document Intelligence** - ✅ Done (~800 lines, multi-source OSINT)
+10. **GitHub/GitLab Recon** - ✅ Done (~1000 lines, multi-source OSINT)
+11. **Breach Intelligence** - ✅ Done (~800 lines, multi-source OSINT)
+12. **Auto-Update** - ✅ Done (~600 lines, GitHub integration)
 
 ---
 
@@ -192,11 +203,18 @@ dnspython>=2.4.0         # DNS enumeration
 python-nmap>=0.7.1       # Port scanning
 rich>=13.0.0             # Output formatting
 pyyaml>=6.0.0            # Config parsing
+packaging>=23.0          # Version comparison
 
 # Phase 2
 github3.py>=3.0.0        # GitHub API
 python-linkedin>=1.0     # LinkedIn (if available)
 hunter-sdk>=1.0.0        # Hunter.io API
+python-whois>=0.9.0      # WHOIS queries
+pymupdf>=1.23.0          # PDF metadata extraction (PyMuPDF)
+python-docx>=1.0.0       # DOCX metadata extraction
+openpyxl>=3.1.0          # XLSX metadata extraction
+python-pptx>=0.6.0       # PPTX metadata extraction
+pillow>=10.0.0           # EXIF metadata extraction (PIL)
 
 # Phase 3
 nuclei-sdk>=0.1.0        # Nuclei integration (or subprocess)
