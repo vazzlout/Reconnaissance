@@ -387,28 +387,34 @@ class ReconTool:
         
         doc_config = self.config.get('document_intel', {})
         
-        config = DocumentIntelConfig(
-            max_results_per_query=doc_config.get('max_results_per_query', 50),
-            max_pages_per_engine=doc_config.get('max_pages_per_engine', 5),
-            request_delay=doc_config.get('request_delay', 2.0),
-            file_types=doc_config.get('file_types', None),
-            use_google=doc_config.get('use_google', True),
-            use_bing=doc_config.get('use_bing', True),
-            use_duckduckgo=doc_config.get('use_duckduckgo', True),
-            crawl_website=doc_config.get('crawl_website', True),
-            max_crawl_pages=doc_config.get('max_crawl_pages', 100),
-            max_file_size=doc_config.get('max_file_size', 50 * 1024 * 1024),
-            extract_pdf=doc_config.get('extract_pdf', True),
-            extract_office=doc_config.get('extract_office', True),
-            extract_exif=doc_config.get('extract_exif', True),
-            extract_custom=doc_config.get('extract_custom', True),
-            download_files=doc_config.get('download_files', True),
-            save_to_disk=doc_config.get('save_to_disk', False),
-            output_dir=doc_config.get('output_dir', './documents'),
-            min_file_size=doc_config.get('min_file_size', 1024),
-            keywords=doc_config.get('keywords', []),
-            exclude_keywords=doc_config.get('exclude_keywords', []),
-        )
+        # Build config dict, only including non-None values to allow dataclass defaults
+        config_kwargs = {
+            'max_results_per_query': doc_config.get('max_results_per_query', 50),
+            'max_pages_per_engine': doc_config.get('max_pages_per_engine', 5),
+            'request_delay': doc_config.get('request_delay', 2.0),
+            'use_google': doc_config.get('use_google', True),
+            'use_bing': doc_config.get('use_bing', True),
+            'use_duckduckgo': doc_config.get('use_duckduckgo', True),
+            'crawl_website': doc_config.get('crawl_website', True),
+            'max_crawl_pages': doc_config.get('max_crawl_pages', 100),
+            'max_file_size': doc_config.get('max_file_size', 50 * 1024 * 1024),
+            'extract_pdf': doc_config.get('extract_pdf', True),
+            'extract_office': doc_config.get('extract_office', True),
+            'extract_exif': doc_config.get('extract_exif', True),
+            'extract_custom': doc_config.get('extract_custom', True),
+            'download_files': doc_config.get('download_files', True),
+            'save_to_disk': doc_config.get('save_to_disk', False),
+            'output_dir': doc_config.get('output_dir', './documents'),
+            'min_file_size': doc_config.get('min_file_size', 1024),
+            'keywords': doc_config.get('keywords', []),
+            'exclude_keywords': doc_config.get('exclude_keywords', []),
+        }
+        
+        # Only add optional fields if they are not None in config
+        if doc_config.get('file_types') is not None:
+            config_kwargs['file_types'] = doc_config['file_types']
+        
+        config = DocumentIntelConfig(**config_kwargs)
         
         intel = DocumentIntelligence(
             self.target,
@@ -786,37 +792,35 @@ async def main():
         # Interactive menu mode
         await interactive_menu(tool, args)
     else:
-        # Direct module execution (original behavior)
+        # Direct module execution - run all specified modules
         if args.subdomain:
             tool.results["subdomain_enum"] = await tool.run_subdomain_enum()
-        elif args.portscan:
+        if args.portscan:
             tool.results["port_scan"] = tool.run_port_scan()
-        elif args.dns:
+        if args.dns:
             tool.results["dns_enum"] = tool.run_dns_enum()
-        elif args.http:
+        if args.http:
             tool.results["http_recon"] = await tool.run_http_recon()
-        elif args.ssl:
+        if args.ssl:
             tool.results["ssl_analyzer"] = await tool.run_ssl_analyzer()
-        elif args.dir:
+        if args.dir:
             tool.results["dir_enum"] = await tool.run_dir_enum()
-        elif args.tech:
+        if args.tech:
             tool.results["tech_fingerprint"] = await tool.run_tech_fingerprint()
-        elif args.email:
+        if args.email:
             tool.results["email_harvester"] = await tool.run_email_harvester()
-        elif args.employee:
+        if args.employee:
             tool.results["employee_enum"] = await tool.run_employee_enum()
-        elif args.username:
+        if args.username:
             tool.results["username_enum"] = await tool.run_username_enum()
-        elif args.docs:
+        if args.docs:
             tool.results["document_intel"] = await tool.run_document_intel()
-        elif args.github:
+        if args.github:
             tool.results["osint_github"] = await tool.run_osint_github()
-        elif args.breach:
+        if args.breach:
             tool.results["breach_intel"] = await tool.run_breach_intel()
-        elif args.update:
+        if args.update:
             tool.results["auto_update"] = await tool.run_auto_update()
-        else:
-            await tool.run_all()
         
         if args.output:
             tool.save_results(args.output)

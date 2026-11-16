@@ -13,7 +13,7 @@ import json
 import hashlib
 from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass, field
-from urllib.parse import urlencode, quote_plus, urlparse
+from urllib.parse import urlencode, quote_plus, urlparse, urljoin
 from collections import defaultdict
 import io
 
