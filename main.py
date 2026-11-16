@@ -664,7 +664,7 @@ async def interactive_menu(tool: 'ReconTool', args):
         print(f"  Recon Tool - Target: {tool.target}")
         print("=" * 50)
         for i, (key, name, _) in enumerate(modules, 1):
-            status = "✓" if key in tool.results else " "
+            status = "[x]" if key in tool.results else "[ ]"
             print(f"  [{i:2d}] {name} {status}")
         print("  [ 0] Run All Modules")
         print("  [ q] Quit")
